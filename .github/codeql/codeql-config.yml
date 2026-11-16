@@ -1,0 +1,6 @@
+name: Show Lyrics first-party C++
+
+paths:
+  - src
+  - tests
+

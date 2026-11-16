@@ -1,0 +1,125 @@
+build:
+  - changed-files:
+      - any-glob-to-any-file:
+          - CMakeLists.txt
+          - CMakePresets.json
+          - cmake/**/*
+          - scripts/setup-dev.ps1
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file:
+          - .github/workflows/**/*
+
+coverage:
+  - changed-files:
+      - any-glob-to-any-file:
+          - codecov.yml
+          - .github/workflows/coverage.yml
+          - docs/code-coverage.md
+
+cpp:
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/**/*.cpp
+          - src/**/*.h
+          - tests/**/*.cpp
+          - tests/**/*.h
+
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file:
+          - .github/dependabot.yml
+          - CMakeLists.txt
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.md"
+          - docs/**/*
+
+git:
+  - changed-files:
+      - any-glob-to-any-file:
+          - .gitattributes
+          - .gitignore
+
+github:
+  - changed-files:
+      - any-glob-to-any-file:
+          - .github/**/*
+
+governance:
+  - changed-files:
+      - any-glob-to-any-file:
+          - .github/CODEOWNERS
+          - .github/copilot-instructions.md
+          - .github/skills/**/*
+          - CODE_OF_CONDUCT.md
+          - CONTRIBUTING.md
+          - SECURITY.md
+
+installer:
+  - changed-files:
+      - any-glob-to-any-file:
+          - cmake/Packaging.cmake
+          - scripts/build-windows-installer.ps1
+          - tests/windows-installer.tests.ps1
+          - docs/windows-installer.md
+
+labels:
+  - changed-files:
+      - any-glob-to-any-file:
+          - .github/labeler.yml
+          - .github/workflows/pr-labeler.yml
+
+lint:
+  - changed-files:
+      - any-glob-to-any-file:
+          - .clang-format
+          - .clang-tidy
+          - .editorconfig
+          - .markdownlint-cli2.jsonc
+
+model:
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/model/**/*
+          - tests/LyricCueTests.cpp
+
+plugin:
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/plugin/**/*
+
+release:
+  - changed-files:
+      - any-glob-to-any-file:
+          - .github/workflows/release.yml
+          - CHANGELOG.md
+          - cmake/Packaging.cmake
+          - docs/releasing.md
+          - scripts/build-windows-installer.ps1
+
+security:
+  - changed-files:
+      - any-glob-to-any-file:
+          - SECURITY.md
+          - .github/workflows/codeql.yml
+
+test:
+  - changed-files:
+      - any-glob-to-any-file:
+          - tests/**/*
+
+ui:
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/plugin/PluginEditor.cpp
+          - src/plugin/PluginEditor.h
+
+vscode:
+  - changed-files:
+      - any-glob-to-any-file:
+          - .vscode/**/*
+

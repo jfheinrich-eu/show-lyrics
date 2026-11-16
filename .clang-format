@@ -1,0 +1,20 @@
+---
+BasedOnStyle: Microsoft
+Language: Cpp
+Standard: c++17
+ColumnLimit: 120
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+SortIncludes: CaseSensitive
+LineEnding: LF
+---
+BasedOnStyle: LLVM
+Language: Json
+ColumnLimit: 120
+IndentWidth: 2
+TabWidth: 2
+UseTab: Never
+BreakArrays: true
+LineEnding: LF
+

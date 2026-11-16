@@ -1,0 +1,28 @@
+# Build and CMake output
+/build/
+/out/
+/cmake-build-*/
+
+# Visual Studio and local caches
+/.vs/
+/.cache/
+*.VC.db
+*.opendb
+*.suo
+*.user
+
+# VS Code local workspace state
+/.vscode/*.log
+
+# Operating-system files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Local CMake overrides and generated plug-ins
+CMakeUserPresets.json
+*.vst3
+
+# Generated project review results
+/*_review-project-results.md
+

@@ -56,11 +56,24 @@ These identifiers were confirmed on November 16, 2026. Changing them later can m
 
 Show Lyrics is licensed under `AGPL-3.0-only`. JUCE is used under its AGPLv3 option. Public binary distribution requires the complete corresponding source, license notices, and the build and installation information required by the license.
 
+## Confirmed decisions
+
+### UX-001: Cue overlap behavior
+
+- Cue ranges must not overlap.
+- Two half-open ranges `[a, b)` and `[c, d)` overlap exactly when `a < d && c < b`.
+- A candidate range must be checked against every other cue. Checking only whether a candidate boundary lies inside another range is insufficient because the candidate may completely contain an existing range.
+- Adjacent ranges are valid. For example, `[15, 23)` and `[23, 30)` do not overlap.
+- A create or edit operation that would introduce an overlap is rejected. The last valid cue state remains unchanged.
+- The editor marks the affected range fields and identifies the conflicting cue by title and range.
+- Cue ordering affects editor presentation only. Playback does not use ordering as a tie-breaker because the non-overlap invariant permits at most one active cue at any musical position.
+
+The approved decision and required examples are tracked in GitHub issue #5.
+
 ## Open decisions
 
 | ID | Decision | Required before |
 |---|---|---|
-| UX-001 | Define cue overlap behavior. | Cue editor implementation |
 | UX-002 | Define text formatting allowed in lyrics. | State schema implementation |
 | UX-003 | Decide whether stopped transport shows the cue at the cursor. | Transport implementation |
 | DATA-001 | Define state schema, versioning, and size limits. | Project persistence |

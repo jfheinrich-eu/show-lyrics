@@ -24,6 +24,11 @@ FetchContent_MakeAvailable(JUCE)
 add_library(
     ShowLyricsDomain
     STATIC
+        src/model/CueState.cpp
+        src/model/CueState.h
+        src/model/CueStateLimits.h
+        src/model/CueStateSerializer.cpp
+        src/model/CueStateSerializer.h
         src/model/LyricCue.cpp
         src/model/LyricCue.h
 )
@@ -38,6 +43,9 @@ target_compile_features(ShowLyricsDomain PUBLIC cxx_std_17)
 
 target_link_libraries(
     ShowLyricsDomain
+    PUBLIC
+        juce::juce_core
+        juce::juce_data_structures
     PRIVATE
         juce::juce_recommended_config_flags
         juce::juce_recommended_warning_flags

@@ -103,6 +103,8 @@ The approved decision and required examples are tracked in GitHub issue #7.
 
 The approved decision and required examples are tracked in GitHub issue #8.
 
+The exact binary layout, validation order, and version policy are defined in [Cue state schema](docs/cue-state-schema.md).
+
 ## Open decisions
 
 None.

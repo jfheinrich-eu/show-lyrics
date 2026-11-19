@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/header.png" alt="ShowLyrics logo">
+</p>
+
 # Show Lyrics
 
 Show Lyrics is an early-stage VST3 plug-in for displaying lyrics associated with musical timeline ranges in Cubase Elements 15.

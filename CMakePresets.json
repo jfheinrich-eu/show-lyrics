@@ -36,6 +36,7 @@
       "configuration": "Debug",
       "targets": [
         "ShowLyricsDomainTests",
+        "ShowLyricsCuePlaybackIndexTests",
         "ShowLyricsPlugin_VST3"
       ]
     },
@@ -45,6 +46,7 @@
       "configuration": "Release",
       "targets": [
         "ShowLyricsDomainTests",
+        "ShowLyricsCuePlaybackIndexTests",
         "ShowLyricsPlugin_VST3"
       ]
     }

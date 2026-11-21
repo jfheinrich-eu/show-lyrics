@@ -4,6 +4,8 @@ on:
   workflow_run:
     workflows: [CI, CodeQL, Coverage]
     types: [completed]
+  pull_request_target:
+    types: [ready_for_review]
 
 permissions:
   actions: read
@@ -23,31 +25,46 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $event = Get-Content -LiteralPath $env:GITHUB_EVENT_PATH -Raw | ConvertFrom-Json
-          $pullRequests = @($event.workflow_run.pull_requests)
+          $eventName = $env:GITHUB_EVENT_NAME
+          $pullRequestNumber = $null
+          $workflowSha = $null
 
-          if ($pullRequests.Count -ne 1) {
-            Write-Output 'eligible=false' >> $env:GITHUB_OUTPUT
-            Write-Output 'The workflow run is not associated with exactly one pull request.'
-            exit 0
+          if ($eventName -eq 'pull_request_target') {
+            $pullRequestNumber = $event.pull_request.number
+            Write-Output "Event: ready_for_review; PR #$pullRequestNumber"
+          }
+          elseif ($eventName -eq 'workflow_run') {
+            $pullRequests = @($event.workflow_run.pull_requests | Where-Object { $null -ne $_ })
+            if ($pullRequests.Count -ne 1) {
+              Write-Output 'eligible=false' >> $env:GITHUB_OUTPUT
+              Write-Output "Expected exactly one associated PR, found $($pullRequests.Count)."
+              exit 0
+            }
+            $pullRequestNumber = $pullRequests[0].number
+            $workflowSha = $event.workflow_run.head_sha
+            Write-Output "Event: workflow_run; PR #$pullRequestNumber"
+          }
+          else {
+            throw "Unsupported event: $eventName"
           }
 
-          $pullRequestNumber = $pullRequests[0].number
           $pullRequest = gh api "repos/$env:GITHUB_REPOSITORY/pulls/$pullRequestNumber" | ConvertFrom-Json
-          $workflowSha = $event.workflow_run.head_sha
+          if ($LASTEXITCODE -ne 0) { throw 'Unable to load pull request.' }
+
           $pullRequestHeadSha = $pullRequest.head.sha
-          $isCurrentRun =
+          $ownerMatches = $pullRequest.user.login -eq 'jfheinrich'
+          $notDraft = -not $pullRequest.draft
+          $sameRepository = $pullRequest.head.repo.full_name -eq $env:GITHUB_REPOSITORY
+          $isOpen = $pullRequest.state -eq 'open'
+          $isCurrentRun = $eventName -eq 'pull_request_target' -or
             $workflowSha -eq $pullRequestHeadSha -or
             $workflowSha -eq $pullRequest.merge_commit_sha
 
-          $isEligible =
-            $pullRequest.user.login -eq 'jfheinrich' -and
-            -not $pullRequest.draft -and
-            $pullRequest.head.repo.full_name -eq $env:GITHUB_REPOSITORY -and
-            $isCurrentRun
-
+          Write-Output "Eligibility: owner=$ownerMatches, nonDraft=$notDraft, sameRepository=$sameRepository, open=$isOpen, currentRun=$isCurrentRun"
+          $isEligible = $ownerMatches -and $notDraft -and $sameRepository -and $isOpen -and $isCurrentRun
           if (-not $isEligible) {
             Write-Output 'eligible=false' >> $env:GITHUB_OUTPUT
-            Write-Output 'Only current, non-draft pull requests from jfheinrich in this repository are eligible.'
+            Write-Output 'PR is not eligible for automated approval.'
             exit 0
           }
 

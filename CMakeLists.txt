@@ -24,6 +24,8 @@ FetchContent_MakeAvailable(JUCE)
 add_library(
     ShowLyricsDomain
     STATIC
+        src/model/CuePlaybackIndex.cpp
+        src/model/CuePlaybackIndex.h
         src/model/CueState.cpp
         src/model/CueState.h
         src/model/CueStateLimits.h
@@ -104,10 +106,18 @@ if(BUILD_TESTING)
         tests/LyricCueTests.cpp
     )
 
+    add_executable(
+        ShowLyricsCuePlaybackIndexTests
+        tests/CuePlaybackIndexTests.cpp
+    )
+
     target_compile_features(ShowLyricsDomainTests PRIVATE cxx_std_17)
+    target_compile_features(ShowLyricsCuePlaybackIndexTests PRIVATE cxx_std_17)
     target_link_libraries(ShowLyricsDomainTests PRIVATE ShowLyricsDomain)
+    target_link_libraries(ShowLyricsCuePlaybackIndexTests PRIVATE ShowLyricsDomain)
 
     add_test(NAME ShowLyricsDomainTests COMMAND ShowLyricsDomainTests)
+    add_test(NAME ShowLyricsCuePlaybackIndexTests COMMAND ShowLyricsCuePlaybackIndexTests)
 endif()
 
 if(MSVC)
@@ -115,6 +125,7 @@ if(MSVC)
     target_compile_options(ShowLyricsPlugin PRIVATE /permissive- /W4)
     if(BUILD_TESTING)
         target_compile_options(ShowLyricsDomainTests PRIVATE /permissive- /W4)
+        target_compile_options(ShowLyricsCuePlaybackIndexTests PRIVATE /permissive- /W4)
     endif()
 endif()
 

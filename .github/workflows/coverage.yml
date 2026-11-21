@@ -20,7 +20,9 @@ jobs:
       - name: Configure coverage build
         run: cmake --preset windows-x64-debug -B build/coverage
       - name: Build coverage tests
-        run: cmake --build build/coverage --config Debug --target ShowLyricsDomainTests
+        run: >-
+          cmake --build build/coverage --config Debug --target
+          ShowLyricsDomainTests ShowLyricsCuePlaybackIndexTests
       - name: Run tests before coverage collection
         run: ctest --test-dir build/coverage -C Debug --output-on-failure
       - name: Collect native C++ coverage
@@ -49,25 +51,42 @@ jobs:
             throw 'Microsoft.CodeCoverage.Console.exe was not found.'
           }
 
-          $testExecutable = (Resolve-Path 'build\coverage\Debug\ShowLyricsDomainTests.exe').Path
-          $nativeCoverage = Join-Path $PWD 'build\coverage\domain-tests.coverage'
           $coverageReport = Join-Path $PWD 'build\coverage\coverage.cobertura.xml'
 
-          & $coverageTool collect `
-            --include-files $testExecutable `
-            --output $nativeCoverage `
-            --output-format coverage `
-            --nologo `
-            $testExecutable
-          if ($LASTEXITCODE -ne 0) {
-            throw "Coverage collection failed with exit code $LASTEXITCODE."
+          $coverageRuns = @(
+            @{
+              Executable = (Resolve-Path `
+                'build\coverage\Debug\ShowLyricsDomainTests.exe').Path
+              Output = Join-Path $PWD 'build\coverage\domain-tests.coverage'
+            },
+            @{
+              Executable = (Resolve-Path `
+                'build\coverage\Debug\ShowLyricsCuePlaybackIndexTests.exe').Path
+              Output = Join-Path $PWD 'build\coverage\cue-playback-index-tests.coverage'
+            }
+          )
+
+          $nativeCoverageReports = @()
+          foreach ($coverageRun in $coverageRuns) {
+            & $coverageTool collect `
+              --include-files $coverageRun.Executable `
+              --output $coverageRun.Output `
+              --output-format coverage `
+              --nologo `
+              $coverageRun.Executable
+            if ($LASTEXITCODE -ne 0) {
+              throw "Coverage collection failed with exit code $LASTEXITCODE."
+            }
+
+            $nativeCoverageReports += $coverageRun.Output
           }
 
-          & $coverageTool merge `
-            $nativeCoverage `
-            --output $coverageReport `
-            --output-format cobertura `
-            --nologo
+          $mergeArguments = @('merge') + $nativeCoverageReports + @(
+            '--output', $coverageReport,
+            '--output-format', 'cobertura',
+            '--nologo'
+          )
+          & $coverageTool @mergeArguments
           if ($LASTEXITCODE -ne 0) {
             throw "Coverage conversion failed with exit code $LASTEXITCODE."
           }
@@ -100,6 +119,9 @@ jobs:
           )
           if (@($normalizedPaths | Where-Object { $_ -match '^src/model/LyricCue\.(cpp|h)$' }).Count -eq 0) {
             throw 'The coverage report contains no normalized LyricCue source path.'
+          }
+          if (@($normalizedPaths | Where-Object { $_ -eq 'src/model/CuePlaybackIndex.cpp' }).Count -eq 0) {
+            throw 'The coverage report contains no normalized CuePlaybackIndex source path.'
           }
       - name: Store coverage report
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

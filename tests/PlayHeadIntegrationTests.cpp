@@ -301,14 +301,27 @@ void testGenerationSwitchAndMailboxOverflow()
     require(restarted.audioProcessingAvailable && !restarted.hasSnapshot,
             "prepareToPlay must discard snapshots from the previous audio lifecycle");
 }
+
+void testRepeatedEditorOpenAndClose()
+{
+    ShowLyricsAudioProcessor processor;
+    for (int iteration = 0; iteration < 3; ++iteration)
+    {
+        std::unique_ptr<juce::AudioProcessorEditor> editor(processor.createEditor());
+        require(editor != nullptr, "each editor opening must create a valid editor");
+    }
+}
 } // namespace
 
 int main()
 {
+    juce::ScopedJuceInitialiser_GUI initialiseJuce;
+
     testCompleteAndPartialHostPositions();
     testInvalidAndMissingHostPositions();
     testPlayStopSeekAndCycleWrap();
     testGenerationSwitchAndMailboxOverflow();
+    testRepeatedEditorOpenAndClose();
 
     std::cout << "ShowLyricsPlayHeadIntegrationTests: PASS\n";
     return EXIT_SUCCESS;

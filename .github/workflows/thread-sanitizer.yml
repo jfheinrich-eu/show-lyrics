@@ -26,6 +26,12 @@ jobs:
           clang++-18 --version
           cmake --version
           ninja --version
+      - name: Install JUCE build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends \
+            libfontconfig1-dev \
+            libfreetype6-dev
       - name: Configure ThreadSanitizer build
         run: >-
           cmake -S . -B build/tsan -G Ninja

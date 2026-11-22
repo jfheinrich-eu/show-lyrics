@@ -50,6 +50,8 @@ target_include_directories(
 
 target_compile_features(ShowLyricsDomain PUBLIC cxx_std_17)
 
+target_compile_definitions(ShowLyricsDomain PUBLIC JUCE_USE_CURL=0)
+
 target_link_libraries(
     ShowLyricsDomain
     PUBLIC

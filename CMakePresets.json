@@ -37,6 +37,7 @@
       "targets": [
         "ShowLyricsDomainTests",
         "ShowLyricsCuePlaybackIndexTests",
+        "ShowLyricsRealtimeCommunicationTests",
         "ShowLyricsPlugin_VST3"
       ]
     },
@@ -47,6 +48,7 @@
       "targets": [
         "ShowLyricsDomainTests",
         "ShowLyricsCuePlaybackIndexTests",
+        "ShowLyricsRealtimeCommunicationTests",
         "ShowLyricsPlugin_VST3"
       ]
     }

@@ -1,0 +1,51 @@
+name: ThreadSanitizer
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  thread-sanitizer:
+    name: ThreadSanitizer
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CC: clang-18
+      CXX: clang++-18
+      TSAN_OPTIONS: halt_on_error=1:exitcode=66
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Verify toolchain
+        run: |
+          clang++-18 --version
+          cmake --version
+          ninja --version
+      - name: Install JUCE build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends \
+            libfontconfig1-dev \
+            libfreetype6-dev
+      - name: Configure ThreadSanitizer build
+        run: >-
+          cmake -S . -B build/tsan -G Ninja
+          -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          -DBUILD_TESTING=ON
+          -DSHOW_LYRICS_BUILD_PLUGIN=OFF
+          -DCMAKE_C_FLAGS="-fsanitize=thread -fno-omit-frame-pointer"
+          -DCMAKE_CXX_FLAGS="-fsanitize=thread -fno-omit-frame-pointer"
+          -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=thread"
+      - name: Build real-time communication tests
+        run: >-
+          cmake --build build/tsan
+          --target ShowLyricsRealtimeCommunicationTests
+      - name: Run ThreadSanitizer tests
+        run: >-
+          ctest --test-dir build/tsan --output-on-failure
+          --tests-regex '^ShowLyricsRealtimeCommunicationTests$'

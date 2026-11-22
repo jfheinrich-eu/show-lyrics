@@ -84,6 +84,8 @@ if(SHOW_LYRICS_BUILD_PLUGIN)
     target_sources(
         ShowLyricsPlugin
         PRIVATE
+            src/plugin/HostPositionSnapshot.cpp
+            src/plugin/HostPositionSnapshot.h
             src/plugin/PluginEditor.cpp
             src/plugin/PluginEditor.h
             src/plugin/PluginProcessor.cpp
@@ -127,6 +129,19 @@ if(BUILD_TESTING)
         tests/RealtimeCommunicationTests.cpp
     )
 
+    if(SHOW_LYRICS_BUILD_PLUGIN)
+        add_executable(
+            ShowLyricsPlayHeadIntegrationTests
+            tests/PlayHeadIntegrationTests.cpp
+            src/plugin/HostPositionSnapshot.cpp
+            src/plugin/HostPositionSnapshot.h
+            src/plugin/PluginEditor.cpp
+            src/plugin/PluginEditor.h
+            src/plugin/PluginProcessor.cpp
+            src/plugin/PluginProcessor.h
+        )
+    endif()
+
     target_compile_features(ShowLyricsDomainTests PRIVATE cxx_std_17)
     target_compile_features(ShowLyricsCuePlaybackIndexTests PRIVATE cxx_std_17)
     target_compile_features(ShowLyricsRealtimeCommunicationTests PRIVATE cxx_std_17)
@@ -134,9 +149,32 @@ if(BUILD_TESTING)
     target_link_libraries(ShowLyricsCuePlaybackIndexTests PRIVATE ShowLyricsDomain)
     target_link_libraries(ShowLyricsRealtimeCommunicationTests PRIVATE ShowLyricsDomain)
 
+    if(SHOW_LYRICS_BUILD_PLUGIN)
+        target_compile_features(ShowLyricsPlayHeadIntegrationTests PRIVATE cxx_std_17)
+        target_compile_definitions(
+            ShowLyricsPlayHeadIntegrationTests
+            PRIVATE
+                JUCE_USE_CURL=0
+                JUCE_VST3_CAN_REPLACE_VST2=0
+                JUCE_WEB_BROWSER=0
+                JucePlugin_Name="Show Lyrics"
+        )
+        target_link_libraries(
+            ShowLyricsPlayHeadIntegrationTests
+            PRIVATE
+                ShowLyricsDomain
+                juce::juce_audio_utils
+                juce::juce_recommended_config_flags
+                juce::juce_recommended_warning_flags
+        )
+    endif()
+
     add_test(NAME ShowLyricsDomainTests COMMAND ShowLyricsDomainTests)
     add_test(NAME ShowLyricsCuePlaybackIndexTests COMMAND ShowLyricsCuePlaybackIndexTests)
     add_test(NAME ShowLyricsRealtimeCommunicationTests COMMAND ShowLyricsRealtimeCommunicationTests)
+    if(SHOW_LYRICS_BUILD_PLUGIN)
+        add_test(NAME ShowLyricsPlayHeadIntegrationTests COMMAND ShowLyricsPlayHeadIntegrationTests)
+    endif()
 endif()
 
 if(MSVC)
@@ -148,6 +186,9 @@ if(MSVC)
         target_compile_options(ShowLyricsDomainTests PRIVATE /permissive- /W4)
         target_compile_options(ShowLyricsCuePlaybackIndexTests PRIVATE /permissive- /W4)
         target_compile_options(ShowLyricsRealtimeCommunicationTests PRIVATE /permissive- /W4)
+        if(SHOW_LYRICS_BUILD_PLUGIN)
+            target_compile_options(ShowLyricsPlayHeadIntegrationTests PRIVATE /permissive- /W4)
+        endif()
     endif()
 endif()
 

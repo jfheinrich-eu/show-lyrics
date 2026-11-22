@@ -23,7 +23,7 @@ jobs:
         run: >-
           cmake --build build/coverage --config Debug --target
           ShowLyricsDomainTests ShowLyricsCuePlaybackIndexTests
-          ShowLyricsRealtimeCommunicationTests
+          ShowLyricsRealtimeCommunicationTests ShowLyricsPlayHeadIntegrationTests
       - name: Run tests before coverage collection
         run: ctest --test-dir build/coverage -C Debug --output-on-failure
       - name: Collect native C++ coverage
@@ -69,6 +69,11 @@ jobs:
               Executable = (Resolve-Path `
                 'build\coverage\Debug\ShowLyricsRealtimeCommunicationTests.exe').Path
               Output = Join-Path $PWD 'build\coverage\realtime-communication-tests.coverage'
+            },
+            @{
+              Executable = (Resolve-Path `
+                'build\coverage\Debug\ShowLyricsPlayHeadIntegrationTests.exe').Path
+              Output = Join-Path $PWD 'build\coverage\playhead-integration-tests.coverage'
             }
           )
 
@@ -134,6 +139,9 @@ jobs:
           }
           if (@($normalizedPaths | Where-Object { $_ -eq 'src/model/TransportSnapshotMailbox.cpp' }).Count -eq 0) {
             throw 'The coverage report contains no normalized TransportSnapshotMailbox source path.'
+          }
+          if (@($normalizedPaths | Where-Object { $_ -eq 'src/plugin/HostPositionSnapshot.cpp' }).Count -eq 0) {
+            throw 'The coverage report contains no normalized HostPositionSnapshot source path.'
           }
       - name: Store coverage report
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

@@ -24,6 +24,8 @@ FetchContent_MakeAvailable(JUCE)
 add_library(
     ShowLyricsDomain
     STATIC
+        src/model/CueGenerationExchange.cpp
+        src/model/CueGenerationExchange.h
         src/model/CuePlaybackIndex.cpp
         src/model/CuePlaybackIndex.h
         src/model/CueState.cpp
@@ -33,6 +35,9 @@ add_library(
         src/model/CueStateSerializer.h
         src/model/LyricCue.cpp
         src/model/LyricCue.h
+        src/model/TransportSnapshot.h
+        src/model/TransportSnapshotMailbox.cpp
+        src/model/TransportSnapshotMailbox.h
 )
 
 target_include_directories(
@@ -111,13 +116,21 @@ if(BUILD_TESTING)
         tests/CuePlaybackIndexTests.cpp
     )
 
+    add_executable(
+        ShowLyricsRealtimeCommunicationTests
+        tests/RealtimeCommunicationTests.cpp
+    )
+
     target_compile_features(ShowLyricsDomainTests PRIVATE cxx_std_17)
     target_compile_features(ShowLyricsCuePlaybackIndexTests PRIVATE cxx_std_17)
+    target_compile_features(ShowLyricsRealtimeCommunicationTests PRIVATE cxx_std_17)
     target_link_libraries(ShowLyricsDomainTests PRIVATE ShowLyricsDomain)
     target_link_libraries(ShowLyricsCuePlaybackIndexTests PRIVATE ShowLyricsDomain)
+    target_link_libraries(ShowLyricsRealtimeCommunicationTests PRIVATE ShowLyricsDomain)
 
     add_test(NAME ShowLyricsDomainTests COMMAND ShowLyricsDomainTests)
     add_test(NAME ShowLyricsCuePlaybackIndexTests COMMAND ShowLyricsCuePlaybackIndexTests)
+    add_test(NAME ShowLyricsRealtimeCommunicationTests COMMAND ShowLyricsRealtimeCommunicationTests)
 endif()
 
 if(MSVC)
@@ -126,6 +139,7 @@ if(MSVC)
     if(BUILD_TESTING)
         target_compile_options(ShowLyricsDomainTests PRIVATE /permissive- /W4)
         target_compile_options(ShowLyricsCuePlaybackIndexTests PRIVATE /permissive- /W4)
+        target_compile_options(ShowLyricsRealtimeCommunicationTests PRIVATE /permissive- /W4)
     endif()
 endif()
 

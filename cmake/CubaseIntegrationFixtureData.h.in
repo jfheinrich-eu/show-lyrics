@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+
+#pragma once
+
+#include <string_view>
+
+namespace showlyrics::testing
+{
+inline constexpr std::string_view cubaseIntegrationFixtureJson = R"SLFixture(@SHOW_LYRICS_CUBASE_FIXTURE_JSON@)SLFixture";
+} // namespace showlyrics::testing

@@ -4,12 +4,26 @@
 
 #include "HostPositionSnapshot.h"
 #include "PluginEditor.h"
+#include "model/CueStateSerializer.h"
+
+#if defined(SHOW_LYRICS_ENABLE_CUBASE_TEST_FIXTURE) && SHOW_LYRICS_ENABLE_CUBASE_TEST_FIXTURE
+#include "CubaseIntegrationFixtureData.h"
+#include "testing/CubaseIntegrationFixtureLoader.h"
+#endif
+
+#include <limits>
+#include <utility>
 
 ShowLyricsAudioProcessor::ShowLyricsAudioProcessor()
     : AudioProcessor(BusesProperties()
                          .withInput("Input", juce::AudioChannelSet::stereo(), true)
                          .withOutput("Output", juce::AudioChannelSet::stereo(), true))
 {
+#if defined(SHOW_LYRICS_ENABLE_CUBASE_TEST_FIXTURE) && SHOW_LYRICS_ENABLE_CUBASE_TEST_FIXTURE
+    const auto fixtureResult =
+        showlyrics::testing::loadCubaseIntegrationFixture(*this, showlyrics::testing::cubaseIntegrationFixtureJson);
+    jassert(fixtureResult == showlyrics::testing::CubaseIntegrationFixtureLoadResult::loaded);
+#endif
 }
 
 void ShowLyricsAudioProcessor::prepareToPlay(double, int)
@@ -63,8 +77,36 @@ showlyrics::CueGenerationPublishResult ShowLyricsAudioProcessor::publishCueState
     std::unique_ptr<const showlyrics::CueState> &cueState, std::uint64_t revision)
 {
     const std::lock_guard<std::mutex> lock(cuePublicationMutex_);
+    return publishCueStateLocked(cueState, revision);
+}
+
+showlyrics::CueGenerationPublishResult ShowLyricsAudioProcessor::publishNextCueState(
+    std::unique_ptr<const showlyrics::CueState> &cueState)
+{
+    const std::lock_guard<std::mutex> lock(cuePublicationMutex_);
+    if (nextCueRevision_ == 0)
+        return showlyrics::CueGenerationPublishResult::invalidRevision;
+    return publishCueStateLocked(cueState, nextCueRevision_);
+}
+
+showlyrics::CueGenerationPublishResult ShowLyricsAudioProcessor::publishCueStateLocked(
+    std::unique_ptr<const showlyrics::CueState> &cueState, std::uint64_t revision)
+{
     static_cast<void>(cueGenerations_.reclaimRetired());
-    return cueGenerations_.tryPublish(cueState, revision);
+    const auto result = cueGenerations_.tryPublish(cueState, revision);
+    if (result != showlyrics::CueGenerationPublishResult::published)
+        return result;
+
+    currentCueRevision_ = revision;
+    if (revision == std::numeric_limits<std::uint64_t>::max())
+    {
+        nextCueRevision_ = 0;
+    }
+    else if (nextCueRevision_ != 0 && nextCueRevision_ <= revision)
+    {
+        nextCueRevision_ = revision + 1;
+    }
+    return result;
 }
 
 showlyrics::TransportSnapshotReadResult ShowLyricsAudioProcessor::consumeLatestTransportSnapshot()
@@ -149,9 +191,26 @@ void ShowLyricsAudioProcessor::changeProgramName(int, const juce::String &)
 
 void ShowLyricsAudioProcessor::getStateInformation(juce::MemoryBlock &destinationData)
 {
-    const juce::ValueTree state("ShowLyricsState");
-    juce::MemoryOutputStream stream(destinationData, false);
-    state.writeToStream(stream);
+    const std::lock_guard<std::mutex> lock(cuePublicationMutex_);
+
+    const showlyrics::CueState *state = cueGenerations_.findCueState(currentCueRevision_);
+    std::optional<showlyrics::CueState> emptyState;
+    if (state == nullptr)
+    {
+        showlyrics::CueStateValidationResult validation;
+        emptyState = showlyrics::CueState::create({}, validation);
+        if (!emptyState)
+        {
+            destinationData.reset();
+            return;
+        }
+        state = &*emptyState;
+    }
+
+    const auto serialized = showlyrics::CueStateSerializer::serialize(*state);
+    destinationData.reset();
+    if (serialized)
+        destinationData.append(serialized.data.data(), serialized.data.size());
 }
 
 void ShowLyricsAudioProcessor::setStateInformation(const void *data, int sizeInBytes)
@@ -159,9 +218,12 @@ void ShowLyricsAudioProcessor::setStateInformation(const void *data, int sizeInB
     if (data == nullptr || sizeInBytes <= 0)
         return;
 
-    const auto state = juce::ValueTree::readFromData(data, static_cast<size_t>(sizeInBytes));
-    if (!state.isValid() || !state.hasType("ShowLyricsState"))
+    auto restored = showlyrics::CueStateSerializer::deserialize(data, static_cast<std::size_t>(sizeInBytes));
+    if (!restored)
         return;
+
+    auto state = std::make_unique<const showlyrics::CueState>(std::move(*restored.state));
+    static_cast<void>(publishNextCueState(state));
 }
 
 juce::AudioProcessor *JUCE_CALLTYPE createPluginFilter()

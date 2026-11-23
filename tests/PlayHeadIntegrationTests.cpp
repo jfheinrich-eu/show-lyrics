@@ -1,8 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 #include "model/CueState.h"
+#include "model/CueStateSerializer.h"
 #include "model/LyricCue.h"
 #include "plugin/PluginProcessor.h"
+#include "plugin/testing/CubaseIntegrationFixtureLoader.h"
+
+#include "CubaseIntegrationFixtureData.h"
 
 #include <juce_audio_basics/juce_audio_basics.h>
 
@@ -311,6 +315,99 @@ void testRepeatedEditorOpenAndClose()
         require(editor != nullptr, "each editor opening must create a valid editor");
     }
 }
+
+void requireFixtureCue(ShowLyricsAudioProcessor &processor, TestPlayHead &playHead, double ppqPosition,
+                       std::uint64_t expectedRevision, std::uint16_t expectedIndex, const char *expectedLyrics)
+{
+    playHead.setPosition(makePlayingPosition(ppqPosition));
+    const auto result = processAndConsume(processor);
+    require(result.snapshot.has(showlyrics::TransportSnapshotField::activeCue),
+            "fixture position must select an active cue");
+    require(result.snapshot.cueRevision == expectedRevision && result.snapshot.activeCueIndex == expectedIndex,
+            "fixture cue index and revision must match the active generation");
+
+    auto lyricsMatch = false;
+    require(processor.visitCueState(expectedRevision,
+                                    [&](const showlyrics::CueState &state) {
+                                        const auto &cues = state.getCues();
+                                        lyricsMatch = expectedIndex < cues.size() &&
+                                                      cues[expectedIndex].getLyrics() == expectedLyrics;
+                                    }) &&
+                lyricsMatch,
+            "fixture lyrics must resolve through the published CueState generation");
+}
+
+void testCubaseIntegrationFixtureThroughStatePath()
+{
+    ShowLyricsAudioProcessor processor;
+    TestPlayHead playHead;
+    processor.setPlayHead(&playHead);
+    processor.prepareToPlay(48'000.0, 512);
+
+    require(showlyrics::testing::loadCubaseIntegrationFixture(processor,
+                                                              showlyrics::testing::cubaseIntegrationFixtureJson) ==
+                showlyrics::testing::CubaseIntegrationFixtureLoadResult::loaded,
+            "the canonical Cubase integration fixture must load through setStateInformation");
+
+    requireFixtureCue(processor, playHead, 0.0, 1, 0, "Erste Strophe");
+    requireFixtureCue(processor, playHead, 15.999, 1, 0, "Erste Strophe");
+    requireFixtureCue(processor, playHead, 16.0, 1, 1, "Zweite Strophe");
+    requireFixtureCue(processor, playHead, 32.0, 1, 2, "Refrain");
+    requireFixtureCue(processor, playHead, 48.0, 1, 3, "Outro");
+
+    playHead.setPosition(makePlayingPosition(64.0));
+    const auto endBoundary = processAndConsume(processor);
+    require(endBoundary.snapshot.cueRevision == 1 &&
+                !endBoundary.snapshot.has(showlyrics::TransportSnapshotField::activeCue),
+            "the fixture end boundary must be exclusive");
+
+    juce::MemoryBlock savedState;
+    processor.getStateInformation(savedState);
+    const auto deserialized = showlyrics::CueStateSerializer::deserialize(savedState.getData(), savedState.getSize());
+    require(deserialized && deserialized.state->getCues().size() == 4,
+            "getStateInformation must emit the validated four-cue binary state");
+
+    ShowLyricsAudioProcessor restoredProcessor;
+    TestPlayHead restoredPlayHead;
+    restoredProcessor.setPlayHead(&restoredPlayHead);
+    restoredProcessor.prepareToPlay(48'000.0, 512);
+    restoredProcessor.setStateInformation(savedState.getData(), static_cast<int>(savedState.getSize()));
+    requireFixtureCue(restoredProcessor, restoredPlayHead, 32.0, 1, 2, "Refrain");
+
+    require(showlyrics::testing::loadCubaseIntegrationFixture(processor,
+                                                              showlyrics::testing::cubaseIntegrationFixtureJson) ==
+                showlyrics::testing::CubaseIntegrationFixtureLoadResult::loaded,
+            "reloading the canonical fixture must succeed");
+    requireFixtureCue(processor, playHead, 16.0, 2, 1, "Zweite Strophe");
+
+    require(showlyrics::testing::loadCubaseIntegrationFixture(processor, "{") ==
+                showlyrics::testing::CubaseIntegrationFixtureLoadResult::malformedJson,
+            "malformed fixture JSON must be rejected");
+
+    auto overlappingFixture = std::string{showlyrics::testing::cubaseIntegrationFixtureJson};
+    const auto secondCueStart = overlappingFixture.find("\"startQuarterNotes\": 16");
+    require(secondCueStart != std::string::npos, "test must locate the second cue boundary");
+    overlappingFixture.replace(secondCueStart, std::string{"\"startQuarterNotes\": 16"}.size(),
+                               "\"startQuarterNotes\": 8");
+    require(showlyrics::testing::loadCubaseIntegrationFixture(processor, overlappingFixture) ==
+                showlyrics::testing::CubaseIntegrationFixtureLoadResult::invalidCueState,
+            "an overlapping fixture must be rejected by CueState validation");
+
+    auto corruptedState = savedState;
+    static_cast<std::uint8_t *>(corruptedState.getData())[0] ^= 0xffU;
+    processor.setStateInformation(corruptedState.getData(), static_cast<int>(corruptedState.getSize()));
+    requireFixtureCue(processor, playHead, 48.0, 2, 3, "Outro");
+}
+
+void testEmptyProcessorStateRoundTrip()
+{
+    ShowLyricsAudioProcessor processor;
+    juce::MemoryBlock state;
+    processor.getStateInformation(state);
+    const auto restored = showlyrics::CueStateSerializer::deserialize(state.getData(), state.getSize());
+    require(restored && restored.state->getCues().empty(),
+            "a processor without published cues must save a valid empty CueState");
+}
 } // namespace
 
 int main()
@@ -322,6 +419,8 @@ int main()
     testPlayStopSeekAndCycleWrap();
     testGenerationSwitchAndMailboxOverflow();
     testRepeatedEditorOpenAndClose();
+    testCubaseIntegrationFixtureThroughStatePath();
+    testEmptyProcessorStateRoundTrip();
 
     std::cout << "ShowLyricsPlayHeadIntegrationTests: PASS\n";
     return EXIT_SUCCESS;

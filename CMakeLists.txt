@@ -11,6 +11,11 @@ project(
 )
 
 option(SHOW_LYRICS_BUILD_PLUGIN "Build the Show Lyrics VST3 plug-in" ON)
+option(
+    SHOW_LYRICS_ENABLE_CUBASE_TEST_FIXTURE
+    "Embed the Cubase integration fixture in Debug VST3 builds only"
+    OFF
+)
 
 include(CTest)
 include(FetchContent)
@@ -22,6 +27,15 @@ FetchContent_Declare(
 )
 
 FetchContent_MakeAvailable(JUCE)
+
+set(SHOW_LYRICS_CUBASE_FIXTURE_FILE "${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/CubaseIntegrationCues.json")
+file(READ "${SHOW_LYRICS_CUBASE_FIXTURE_FILE}" SHOW_LYRICS_CUBASE_FIXTURE_JSON)
+file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/generated")
+configure_file(
+    cmake/CubaseIntegrationFixtureData.h.in
+    "${CMAKE_CURRENT_BINARY_DIR}/generated/CubaseIntegrationFixtureData.h"
+    @ONLY
+)
 
 add_library(
     ShowLyricsDomain
@@ -114,6 +128,32 @@ if(SHOW_LYRICS_BUILD_PLUGIN)
             juce::juce_recommended_lto_flags
             juce::juce_recommended_warning_flags
     )
+
+    if(SHOW_LYRICS_ENABLE_CUBASE_TEST_FIXTURE)
+        target_sources(
+            ShowLyricsPlugin
+            PRIVATE
+                "$<$<CONFIG:Debug>:${CMAKE_CURRENT_SOURCE_DIR}/src/plugin/testing/CubaseIntegrationFixtureLoader.cpp>"
+                "$<$<CONFIG:Debug>:${CMAKE_CURRENT_SOURCE_DIR}/src/plugin/testing/CubaseIntegrationFixtureLoader.h>"
+        )
+        target_include_directories(ShowLyricsPlugin PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
+        target_compile_definitions(
+            ShowLyricsPlugin
+            PRIVATE
+                "$<$<CONFIG:Debug>:SHOW_LYRICS_ENABLE_CUBASE_TEST_FIXTURE=1>"
+        )
+    endif()
+
+    add_custom_command(
+        TARGET ShowLyricsPlugin_VST3
+        POST_BUILD
+        COMMAND
+            "${CMAKE_COMMAND}"
+            "-DPLUGIN_BINARY=$<TARGET_FILE:ShowLyricsPlugin_VST3>"
+            "-DEXPECT_FIXTURE=$<IF:$<AND:$<BOOL:${SHOW_LYRICS_ENABLE_CUBASE_TEST_FIXTURE}>,$<CONFIG:Debug>>,ON,OFF>"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/VerifyFixtureIsolation.cmake"
+        VERBATIM
+    )
 endif()
 
 if(BUILD_TESTING)
@@ -152,6 +192,8 @@ if(BUILD_TESTING)
             src/plugin/PluginEditor.h
             src/plugin/PluginProcessor.cpp
             src/plugin/PluginProcessor.h
+            src/plugin/testing/CubaseIntegrationFixtureLoader.cpp
+            src/plugin/testing/CubaseIntegrationFixtureLoader.h
             src/plugin/TransportSnapshotReadResult.h
         )
     endif()
@@ -167,6 +209,11 @@ if(BUILD_TESTING)
 
     if(SHOW_LYRICS_BUILD_PLUGIN)
         target_compile_features(ShowLyricsPlayHeadIntegrationTests PRIVATE cxx_std_17)
+        target_include_directories(
+            ShowLyricsPlayHeadIntegrationTests
+            PRIVATE
+                "${CMAKE_CURRENT_BINARY_DIR}/generated"
+        )
         target_compile_definitions(
             ShowLyricsPlayHeadIntegrationTests
             PRIVATE

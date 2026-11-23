@@ -38,6 +38,7 @@
         "ShowLyricsDomainTests",
         "ShowLyricsCuePlaybackIndexTests",
         "ShowLyricsRealtimeCommunicationTests",
+        "ShowLyricsLyricsDisplayModelTests",
         "ShowLyricsPlayHeadIntegrationTests",
         "ShowLyricsPlugin_VST3"
       ]
@@ -50,6 +51,7 @@
         "ShowLyricsDomainTests",
         "ShowLyricsCuePlaybackIndexTests",
         "ShowLyricsRealtimeCommunicationTests",
+        "ShowLyricsLyricsDisplayModelTests",
         "ShowLyricsPlayHeadIntegrationTests",
         "ShowLyricsPlugin_VST3"
       ]

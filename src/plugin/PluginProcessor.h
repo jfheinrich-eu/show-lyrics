@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "TransportSnapshotReadResult.h"
 #include "model/CueGenerationExchange.h"
 #include "model/TransportSnapshotMailbox.h"
 
@@ -12,23 +13,6 @@
 #include <memory>
 #include <mutex>
 #include <utility>
-
-namespace showlyrics
-{
-struct TransportSnapshotReadResult final
-{
-    TransportSnapshot snapshot{};
-    bool hasSnapshot{false};
-    bool overflowed{false};
-    bool audioProcessingAvailable{false};
-
-    [[nodiscard]] bool canDisplayActiveCue() const noexcept
-    {
-        return hasSnapshot && !overflowed && audioProcessingAvailable &&
-               snapshot.has(TransportSnapshotField::activeCue);
-    }
-};
-} // namespace showlyrics
 
 class ShowLyricsAudioProcessor final : public juce::AudioProcessor
 {
@@ -84,7 +68,7 @@ class ShowLyricsAudioProcessor final : public juce::AudioProcessor
     // display until a later non-overflowed snapshot is consumed. If a host
     // stops calling processBlock without calling releaseResources, this layer
     // cannot observe that stop and deliberately does not synthesize one. The
-    // future editor must treat snapshot age conservatively.
+    // editor must treat snapshot age conservatively.
     [[nodiscard]] showlyrics::TransportSnapshotReadResult consumeLatestTransportSnapshot();
 
   private:

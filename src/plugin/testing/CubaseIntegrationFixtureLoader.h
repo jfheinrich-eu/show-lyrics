@@ -14,11 +14,13 @@ enum class CubaseIntegrationFixtureLoadResult
     malformedJson,
     invalidFixture,
     invalidCueState,
-    serializationFailed
+    serializationFailed,
+    generationSlotsFull,
+    publicationFailed
 };
 
 // Test-build only. The JSON is converted to the validated binary state format
-// and then loaded exclusively through AudioProcessor::setStateInformation().
+// and then submitted through the same restore path as setStateInformation().
 [[nodiscard]] CubaseIntegrationFixtureLoadResult loadCubaseIntegrationFixture(ShowLyricsAudioProcessor &processor,
                                                                               std::string_view fixtureJson);
 } // namespace showlyrics::testing

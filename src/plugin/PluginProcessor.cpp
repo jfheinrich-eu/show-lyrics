@@ -215,15 +215,21 @@ void ShowLyricsAudioProcessor::getStateInformation(juce::MemoryBlock &destinatio
 
 void ShowLyricsAudioProcessor::setStateInformation(const void *data, int sizeInBytes)
 {
+    static_cast<void>(restoreCueStateInformation(data, sizeInBytes));
+}
+
+std::optional<showlyrics::CueGenerationPublishResult> ShowLyricsAudioProcessor::restoreCueStateInformation(
+    const void *data, int sizeInBytes)
+{
     if (data == nullptr || sizeInBytes <= 0)
-        return;
+        return std::nullopt;
 
     auto restored = showlyrics::CueStateSerializer::deserialize(data, static_cast<std::size_t>(sizeInBytes));
     if (!restored)
-        return;
+        return std::nullopt;
 
     auto state = std::make_unique<const showlyrics::CueState>(std::move(*restored.state));
-    static_cast<void>(publishNextCueState(state));
+    return publishNextCueState(state);
 }
 
 juce::AudioProcessor *JUCE_CALLTYPE createPluginFilter()

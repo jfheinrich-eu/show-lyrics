@@ -12,7 +12,13 @@
 #include <cstdint>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <utility>
+
+namespace showlyrics::testing
+{
+class CubaseIntegrationFixtureLoaderAccess;
+}
 
 class ShowLyricsAudioProcessor final : public juce::AudioProcessor
 {
@@ -72,6 +78,10 @@ class ShowLyricsAudioProcessor final : public juce::AudioProcessor
     [[nodiscard]] showlyrics::TransportSnapshotReadResult consumeLatestTransportSnapshot();
 
   private:
+    friend class showlyrics::testing::CubaseIntegrationFixtureLoaderAccess;
+
+    [[nodiscard]] std::optional<showlyrics::CueGenerationPublishResult> restoreCueStateInformation(const void *data,
+                                                                                                   int sizeInBytes);
     [[nodiscard]] showlyrics::CueGenerationPublishResult publishNextCueState(
         std::unique_ptr<const showlyrics::CueState> &cueState);
     [[nodiscard]] showlyrics::CueGenerationPublishResult publishCueStateLocked(

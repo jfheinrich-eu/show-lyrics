@@ -399,6 +399,38 @@ void testCubaseIntegrationFixtureThroughStatePath()
     requireFixtureCue(processor, playHead, 48.0, 2, 3, "Outro");
 }
 
+void testCubaseIntegrationFixtureReportsPublicationFailures()
+{
+    ShowLyricsAudioProcessor processor;
+    for (std::size_t publication = 0; publication < showlyrics::CueGenerationExchange::slotCount; ++publication)
+    {
+        require(showlyrics::testing::loadCubaseIntegrationFixture(processor,
+                                                                  showlyrics::testing::cubaseIntegrationFixtureJson) ==
+                    showlyrics::testing::CubaseIntegrationFixtureLoadResult::loaded,
+                "the loader must report each successful bounded publication");
+    }
+
+    require(showlyrics::testing::loadCubaseIntegrationFixture(processor,
+                                                              showlyrics::testing::cubaseIntegrationFixtureJson) ==
+                showlyrics::testing::CubaseIntegrationFixtureLoadResult::generationSlotsFull,
+            "the loader must not report loaded when all generation slots are occupied");
+    require(processor.visitCueState(showlyrics::CueGenerationExchange::slotCount, [](const showlyrics::CueState &) {}),
+            "the last successfully published generation must remain available");
+    require(
+        !processor.visitCueState(showlyrics::CueGenerationExchange::slotCount + 1, [](const showlyrics::CueState &) {}),
+        "a failed fixture publication must not create a generation");
+
+    ShowLyricsAudioProcessor exhaustedRevisionProcessor;
+    publishState(exhaustedRevisionProcessor, makeState(0.0, 8.0), std::numeric_limits<std::uint64_t>::max());
+    require(showlyrics::testing::loadCubaseIntegrationFixture(exhaustedRevisionProcessor,
+                                                              showlyrics::testing::cubaseIntegrationFixtureJson) ==
+                showlyrics::testing::CubaseIntegrationFixtureLoadResult::publicationFailed,
+            "the loader must report a non-slot publication failure instead of loaded");
+    require(exhaustedRevisionProcessor.visitCueState(std::numeric_limits<std::uint64_t>::max(),
+                                                     [](const showlyrics::CueState &) {}),
+            "a failed fixture publication must preserve the last valid generation");
+}
+
 void testEmptyProcessorStateRoundTrip()
 {
     ShowLyricsAudioProcessor processor;
@@ -420,6 +452,7 @@ int main()
     testGenerationSwitchAndMailboxOverflow();
     testRepeatedEditorOpenAndClose();
     testCubaseIntegrationFixtureThroughStatePath();
+    testCubaseIntegrationFixtureReportsPublicationFailures();
     testEmptyProcessorStateRoundTrip();
 
     std::cout << "ShowLyricsPlayHeadIntegrationTests: PASS\n";

@@ -21,6 +21,16 @@
 
 namespace showlyrics::testing
 {
+class CubaseIntegrationFixtureLoaderAccess final
+{
+  public:
+    [[nodiscard]] static std::optional<CueGenerationPublishResult> restore(ShowLyricsAudioProcessor &processor,
+                                                                           const void *data, int sizeInBytes)
+    {
+        return processor.restoreCueStateInformation(data, sizeInBytes);
+    }
+};
+
 namespace
 {
 constexpr std::size_t maximumFixtureBytes = 64U * 1024U;
@@ -140,7 +150,14 @@ CubaseIntegrationFixtureLoadResult loadCubaseIntegrationFixture(ShowLyricsAudioP
     if (!serialized)
         return CubaseIntegrationFixtureLoadResult::serializationFailed;
 
-    processor.setStateInformation(serialized.data.data(), static_cast<int>(serialized.data.size()));
-    return CubaseIntegrationFixtureLoadResult::loaded;
+    const auto publication = CubaseIntegrationFixtureLoaderAccess::restore(processor, serialized.data.data(),
+                                                                           static_cast<int>(serialized.data.size()));
+    if (!publication)
+        return CubaseIntegrationFixtureLoadResult::publicationFailed;
+    if (*publication == CueGenerationPublishResult::published)
+        return CubaseIntegrationFixtureLoadResult::loaded;
+    if (*publication == CueGenerationPublishResult::slotsFull)
+        return CubaseIntegrationFixtureLoadResult::generationSlotsFull;
+    return CubaseIntegrationFixtureLoadResult::publicationFailed;
 }
 } // namespace showlyrics::testing

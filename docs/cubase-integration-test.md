@@ -86,11 +86,13 @@ Use a disposable validation installation with no other `Show Lyrics.vst3` copy v
 
 | Field | Value |
 |---|---|
-| Cubase Elements version | Not run |
-| Show Lyrics commit | Not run |
-| Project file | Not created |
-| Test date | Not run |
-| Tester | Not run |
+| Cubase Elements version | 15 (exact build not recorded) |
+| Show Lyrics commit | `c1255392011213227445d2aed01ebf9bfa4af615` (PR #26 HEAD before this documentation commit; exact tested binary commit not independently verified) |
+| Project file | Not provided / filename not recorded |
+| Test date | 2026-11-23 (reported completion date) |
+| Tester | Project owner (user-reported results) |
+
+All 15 manual tests were reported as passed by the project owner on 2026-11-23. These results are user-reported, not independently reproduced in this repository. The exact Cubase build, tested VST3 binary revision, and project filename were not supplied.
 
 ## T01–T15 protocol
 
@@ -98,21 +100,21 @@ Record `Pass`, `Fail`, or `Blocked` and a concise observation for every test.
 
 | ID | Action | Expected result | Result | Observation |
 |---|---|---|---|---|
-| T01 | Open the project and the plug-in editor while transport is stopped. | The VST3 loads. No lyric text is visible. | Not run | |
-| T02 | Start playback at bar 1 / PPQ 0. | `Erste Strophe` appears; audio remains unchanged. | Not run | |
-| T03 | Play through bar 4 up to immediately before bar 5 / PPQ 16. | `Erste Strophe` remains visible through the end-exclusive boundary approach. | Not run | |
-| T04 | Cross into bar 5 / PPQ 16. | The display changes once to `Zweite Strophe`. | Not run | |
-| T05 | Seek to bar 9 / PPQ 32 and play. | `Refrain` appears without intermediate inferred cues. | Not run | |
-| T06 | Seek to bar 13 / PPQ 48 and play. | `Outro` appears. | Not run | |
-| T07 | Play or seek to bar 17 / PPQ 64. | No lyric cue is displayed; the neutral no-cue state appears. | Not run | |
-| T08 | While playing, seek forward from cue A to cue D. | The display changes directly from `Erste Strophe` to `Outro`. | Not run | |
-| T09 | While playing, seek backward from cue D to cue B. | The display changes directly to `Zweite Strophe`. | Not run | |
-| T10 | Stop while any cue is visible and observe the display for at least 500 ms. | If an audio callback reports the stop, the lyric text first clears as `Transport stopped.` If snapshots then cease, this observed-stop state becomes stale after 500 ms and changes to `Waiting for fresh transport data.` If no stop callback arrives, the last playing snapshot becomes stale directly after 500 ms. Stale data must never be reported as proof of a stop. | Not run | |
-| T11 | Move the project cursor across cue ranges while stopped. | No lyric text becomes active. | Not run | |
-| T12 | Restart at bar 9, then close and reopen the editor while playback continues. | `Refrain` returns only after fresh audio snapshots; no previously cached lyric flashes. | Not run | |
-| T13 | Enable cycle PPQ `[8, 24)` / bars 3–6 and let it wrap twice. | The sequence is A → B → A on each wrap, with no inferred forward continuation. | Not run | |
-| T14 | Enable cycle PPQ `[28, 36)` / bars 8–9 and let it wrap twice. | The sequence is B → C → B on each wrap. | Not run | |
-| T15 | Enable cycle PPQ `[44, 52)` / bars 12–13, save in Cubase, close, reopen, and replay the cycle. | Cubase restores the plug-in; the sequence is C → D → C and audio remains unchanged. | Not run | |
+| T01 | Open the project and the plug-in editor while transport is stopped. | The VST3 loads. No lyric text is visible. | Pass | Passed (reported by project owner; no individual observations supplied) |
+| T02 | Start playback at bar 1 / PPQ 0. | `Erste Strophe` appears; audio remains unchanged. | Pass | Passed (reported by project owner; no individual observations supplied) |
+| T03 | Play through bar 4 up to immediately before bar 5 / PPQ 16. | `Erste Strophe` remains visible through the end-exclusive boundary approach. | Pass | Passed (reported by project owner; no individual observations supplied) |
+| T04 | Cross into bar 5 / PPQ 16. | The display changes once to `Zweite Strophe`. | Pass | Passed (reported by project owner; no individual observations supplied) |
+| T05 | Seek to bar 9 / PPQ 32 and play. | `Refrain` appears without intermediate inferred cues. | Pass | Passed (reported by project owner; no individual observations supplied) |
+| T06 | Seek to bar 13 / PPQ 48 and play. | `Outro` appears. | Pass | Passed (reported by project owner; no individual observations supplied) |
+| T07 | Play or seek to bar 17 / PPQ 64. | No lyric cue is displayed; the neutral no-cue state appears. | Pass | Passed (reported by project owner; no individual observations supplied) |
+| T08 | While playing, seek forward from cue A to cue D. | The display changes directly from `Erste Strophe` to `Outro`. | Pass | Passed (reported by project owner; no individual observations supplied) |
+| T09 | While playing, seek backward from cue D to cue B. | The display changes directly to `Zweite Strophe`. | Pass | Passed (reported by project owner; no individual observations supplied) |
+| T10 | Stop while any cue is visible and observe the display for at least 500 ms. | If an audio callback reports the stop, the lyric text first clears as `Transport stopped.` If snapshots then cease, this observed-stop state becomes stale after 500 ms and changes to `Waiting for fresh transport data.` If no stop callback arrives, the last playing snapshot becomes stale directly after 500 ms. Stale data must never be reported as proof of a stop. | Pass | Passed (reported by project owner; no individual observations supplied) |
+| T11 | Move the project cursor across cue ranges while stopped. | No lyric text becomes active. | Pass | Passed (reported by project owner; no individual observations supplied) |
+| T12 | Restart at bar 9, then close and reopen the editor while playback continues. | `Refrain` returns only after fresh audio snapshots; no previously cached lyric flashes. | Pass | Passed (reported by project owner; no individual observations supplied) |
+| T13 | Enable cycle PPQ `[8, 24)` / bars 3–6 and let it wrap twice. | The sequence is A → B → A on each wrap, with no inferred forward continuation. | Pass | Passed (reported by project owner; no individual observations supplied) |
+| T14 | Enable cycle PPQ `[28, 36)` / bars 8–9 and let it wrap twice. | The sequence is B → C → B on each wrap. | Pass | Passed (reported by project owner; no individual observations supplied) |
+| T15 | Enable cycle PPQ `[44, 52)` / bars 12–13, save in Cubase, close, reopen, and replay the cycle. | Cubase restores the plug-in; the sequence is C → D → C and audio remains unchanged. | Pass | Passed (reported by project owner; no individual observations supplied) |
 
 ## Completion rule
 

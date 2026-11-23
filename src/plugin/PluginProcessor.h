@@ -12,7 +12,13 @@
 #include <cstdint>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <utility>
+
+namespace showlyrics::testing
+{
+class CubaseIntegrationFixtureLoaderAccess;
+}
 
 class ShowLyricsAudioProcessor final : public juce::AudioProcessor
 {
@@ -72,11 +78,22 @@ class ShowLyricsAudioProcessor final : public juce::AudioProcessor
     [[nodiscard]] showlyrics::TransportSnapshotReadResult consumeLatestTransportSnapshot();
 
   private:
+    friend class showlyrics::testing::CubaseIntegrationFixtureLoaderAccess;
+
+    [[nodiscard]] std::optional<showlyrics::CueGenerationPublishResult> restoreCueStateInformation(const void *data,
+                                                                                                   int sizeInBytes);
+    [[nodiscard]] showlyrics::CueGenerationPublishResult publishNextCueState(
+        std::unique_ptr<const showlyrics::CueState> &cueState);
+    [[nodiscard]] showlyrics::CueGenerationPublishResult publishCueStateLocked(
+        std::unique_ptr<const showlyrics::CueState> &cueState, std::uint64_t revision);
+
     showlyrics::CueGenerationExchange cueGenerations_;
     showlyrics::TransportSnapshotMailbox transportMailbox_;
     std::mutex cuePublicationMutex_;
     std::mutex snapshotConsumptionMutex_;
     std::atomic<bool> audioProcessingAvailable_{false};
+    std::uint64_t currentCueRevision_{0}; // Guarded by cuePublicationMutex_.
+    std::uint64_t nextCueRevision_{1};    // Guarded by cuePublicationMutex_; zero means exhausted.
 
     static_assert(std::atomic<bool>::is_always_lock_free);
 

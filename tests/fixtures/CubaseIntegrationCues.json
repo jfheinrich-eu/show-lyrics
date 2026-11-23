@@ -1,0 +1,42 @@
+{
+  "fixtureVersion": 1,
+  "tempoBpm": 120,
+  "timeSignature": {
+    "numerator": 4,
+    "denominator": 4
+  },
+  "cues": [
+    {
+      "id": "11111111-1111-4111-8111-111111111111",
+      "startQuarterNotes": 0,
+      "endQuarterNotes": 16,
+      "title": "A",
+      "lyrics": "Erste Strophe",
+      "displayOrder": 0
+    },
+    {
+      "id": "22222222-2222-4222-8222-222222222222",
+      "startQuarterNotes": 16,
+      "endQuarterNotes": 32,
+      "title": "B",
+      "lyrics": "Zweite Strophe",
+      "displayOrder": 1
+    },
+    {
+      "id": "33333333-3333-4333-8333-333333333333",
+      "startQuarterNotes": 32,
+      "endQuarterNotes": 48,
+      "title": "C",
+      "lyrics": "Refrain",
+      "displayOrder": 2
+    },
+    {
+      "id": "44444444-4444-4444-8444-444444444444",
+      "startQuarterNotes": 48,
+      "endQuarterNotes": 64,
+      "title": "D",
+      "lyrics": "Outro",
+      "displayOrder": 3
+    }
+  ]
+}

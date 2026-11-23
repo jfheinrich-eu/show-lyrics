@@ -50,6 +50,10 @@ build/windows-x64-release/ShowLyricsPlugin_artefacts/Release/VST3/Show Lyrics.vs
 
 The build does not install the plug-in into a system directory.
 
+For the fixture-enabled Debug VST3 and the manual T01–T15 Cubase Elements 15 protocol, see
+[Cubase integration test](docs/cubase-integration-test.md). The fixture is excluded from normal Debug and all Release
+VST3 builds.
+
 ## Windows installer
 
 Build the verified NSIS installer from Developer PowerShell:

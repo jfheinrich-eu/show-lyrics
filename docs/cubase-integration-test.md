@@ -26,8 +26,9 @@ The processor now uses this single state path:
 5. `getStateInformation()` serializes the latest successfully published state with `CueStateSerializer`.
 
 The optional Debug fixture loader does not publish cues directly. It parses the fixture, constructs a validated
-`CueState`, serializes it with `CueStateSerializer`, and calls `setStateInformation()`. The normal host-state path is
-therefore the only activation path.
+`CueState`, serializes it with `CueStateSerializer`, and submits it through the same private restore routine used by
+`setStateInformation()`. The normal host-state path is therefore the only activation path. The loader reports success
+only when the bounded generation exchange confirms publication.
 
 ## Canonical fixture
 
@@ -106,7 +107,7 @@ Record `Pass`, `Fail`, or `Blocked` and a concise observation for every test.
 | T07 | Play or seek to bar 17 / PPQ 64. | No lyric cue is displayed; the neutral no-cue state appears. | Not run | |
 | T08 | While playing, seek forward from cue A to cue D. | The display changes directly from `Erste Strophe` to `Outro`. | Not run | |
 | T09 | While playing, seek backward from cue D to cue B. | The display changes directly to `Zweite Strophe`. | Not run | |
-| T10 | Stop while any cue is visible. | The lyric text clears after an observed stop; stopped is not reported as stale. | Not run | |
+| T10 | Stop while any cue is visible and observe the display for at least 500 ms. | If an audio callback reports the stop, the lyric text first clears as `Transport stopped.` If snapshots then cease, this observed-stop state becomes stale after 500 ms and changes to `Waiting for fresh transport data.` If no stop callback arrives, the last playing snapshot becomes stale directly after 500 ms. Stale data must never be reported as proof of a stop. | Not run | |
 | T11 | Move the project cursor across cue ranges while stopped. | No lyric text becomes active. | Not run | |
 | T12 | Restart at bar 9, then close and reopen the editor while playback continues. | `Refrain` returns only after fresh audio snapshots; no previously cached lyric flashes. | Not run | |
 | T13 | Enable cycle PPQ `[8, 24)` / bars 3–6 and let it wrap twice. | The sequence is A → B → A on each wrap, with no inferred forward continuation. | Not run | |

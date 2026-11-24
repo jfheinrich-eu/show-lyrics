@@ -78,6 +78,49 @@ the payload matches. If a restore wins during candidate preparation, the edit's 
 edit wins first, a later successful restore replaces it. Invalid or unpublishable restores leave the committed
 revision intact. The JUCE callback remains void. There is no deferred restore queue or editor draft persistence.
 
+### Finding 01: Generation slots while callbacks are suspended
+
+**Verified baseline.** Every changed create, update, delete or move publishes a complete generation and consumes one
+free slot. With no callbacks or retired slots left to reclaim, a new exchange accepts three such operations and
+rejects the fourth. With one active slot and no ready slots, it accepts two and rejects the third. Existing ready
+generations reduce that capacity further. A stopped transport flag alone provides no ownership guarantee. Retrying
+without a callback cannot free a ready slot. Host save still reads the last successful revision.
+
+**Proposed adjustment for #29.** Keep three slots and use one lock-free atomic pending slot index, with an empty
+sentinel. This is a handoff of an already committed generation. An edit is either committed synchronously or
+rejected. There is no queue of unapplied edits.
+
+1. Under the existing control mutex, acquire a free slot or reclaim one explicitly retired by audio. Prepare the
+   complete state, revision and playback index before exposing the slot. If preparation fails, release the private
+   slot and preserve the committed revision and pending handoff.
+2. Publish with one acquire-release exchange of the pending index. The returned index, if present, is a superseded
+   generation that audio did not take. The control side owns it exclusively and can reclaim it under the mutex.
+   Update the committed revision in the same critical section. Host save and revisioned reads see the latest
+   successful commit even if no further callbacks arrive.
+3. At block entry, audio uses one acquire-release exchange with the empty sentinel to take the pending slot. The
+   returned index confers exclusive audio ownership. The callback reads the immutable index and revision only after
+   taking ownership. It switches to that generation and releases its previous slot as retired after its final use.
+   A control-side acquire of that retirement permits reclamation. The active slot and any slot taken by audio
+   stay off-limits to control-side destruction. The pending index is never used as a peek-and-dereference pointer.
+4. With callbacks suspended between blocks, at most one active and one pending slot remain occupied. The third can
+   stage each successive commit and the exchange returns the previous pending slot for reuse. Audio can skip
+   superseded revisions and activates the latest available generation on return. During a concurrent takeover,
+   the former active, newly claimed and newly published slots can briefly occupy all three slots. Return
+   `slotsFull` in that case and preserve the draft and revision for explicit retry.
+
+The current audio scan reads a ready slot's revision before its ownership CAS, so adding control-side reclamation
+to that scan would introduce a payload race and slot-reuse hazards. Replace the scan as part of the proposed
+handoff. Specify the atomic ordering and prove that only the exchange winner owns the returned slot. Require
+always-lock-free index atomics and bounded callback work. Editor lookups stay revision-specific and must fail
+closed if an older snapshot's state has been reclaimed.
+
+Regression coverage must saturate the baseline without callbacks and then exercise repeated mixed CRUD and move
+commits beyond three slots in the proposed design, both with and without an existing active slot. Verify save and
+restore of the latest committed revision before audio resumes, then verify matching revision/index and lyrics
+after resumption. Force both orders of audio claim versus pending replacement, stall audio after a claim to force
+temporary saturation, and test manual retry, preparation failure, stale drafts, restore conflicts and revision
+exhaustion. Use deterministic interleavings and ThreadSanitizer for concurrent ownership and slot reuse.
+
 ## Proposed shared transport capture
 
 One message-thread coordinator owns the existing logical mailbox drain for the editor. Its timer updates a shared
@@ -98,8 +141,8 @@ Use a compact confirmation ticket to establish sample freshness without a clock 
 3. Accept a matching snapshot only in its editor session and current audio lifecycle, with age strictly below 500 ms
    from ticket issue. Ticket age bounds sample age from above because sampling follows the acquire load. A drained
    snapshot cannot renew its own age. After confirmation request the next ticket and keep the confirmed value only
-   until expiry or invalidation. Expired requests are replaced. Tickets are never reused and exhaustion disables
-   capture. A new editor discards all cached capture state and requests its own ticket.
+   until expiry or invalidation under the rules below. Expired requests are replaced. Tickets are never reused and
+   exhaustion disables capture. A new editor discards all cached capture state and requests its own ticket.
 4. Add a lifecycle identity to the drain result. Serialize prepare, release and drain on the non-audio side after
    confirming the host lifecycle exclusion used by the existing mailbox reset. Advance the lifecycle identity at
    prepare/release and preserve prepare's queue reset. Reject on unavailable audio or lifecycle mismatch. Recheck
@@ -108,6 +151,39 @@ Use a compact confirmation ticket to establish sample freshness without a clock 
 5. On any overflow, invalidate capture and request a new confirmation after the overflow is observed. Ignore the
    overflowed batch for both consumers. Only a subsequent safe result can resume display. Capture additionally
    requires confirmation of the new ticket. A newer invalid transport result invalidates a prior capture value.
+
+### Finding 02: Eligible capture value and snapshot size
+
+The coordinator processes the bounded drain in arrival order for capture eligibility and gives the newest observation
+to the lyrics model. The processor exposes the drained snapshots to this one coordinator within the existing
+eight-entry bound. When a newer valid observation has a different PPQ or play flag but lacks a current confirmation,
+discard the old eligible value immediately and show “Waiting for confirmed host position”. An unconfirmed result
+with the same PPQ and play flag may leave an unexpired confirmed value eligible, but cannot extend its lifetime.
+After invalidation, even a return to the old PPQ requires a fresh confirmation. An invalid or overflowed observation
+clears eligibility. Clear on lifecycle change or editor reopen before accepting further samples. Only the current
+outstanding ticket may establish a new confirmation. Keep the ticket's original issue time for the whole lifetime
+of that confirmation.
+
+When capture is enabled, show “Capture PPQ” with the exact eligible value in a round-trip-safe decimal representation
+and label it “Last confirmed host observation”. This is a recent observed position and may differ from the current
+Cubase cursor. With no eligible value, disable both capture buttons and show the reason. A click refreshes through the
+same coordinator. If eligibility disappears or the value differs from the one displayed at click time, refresh the
+display and require a new click. Otherwise copy that exact value to the chosen draft field.
+
+The existing layout accounts for 56 bytes on the pinned Windows x64 ABI: five 8-byte doubles (40), one 8-byte
+revision (48), three 2-byte integers (54), and two 1-byte flags (56). Place one `uint64_t` ticket immediately after
+`cueRevision` and before the smaller fields, for 64 bytes at 8-byte alignment. Lifecycle identity stays in the
+non-audio drain result, and ticket issue time stays in the editor coordinator. Per-snapshot timestamps or lifecycle
+fields would exceed the budget. A C++17 compile-only Clang probe targeting the Windows x64 MSVC ABI confirmed the
+56-byte baseline, 64-byte proposed layout, 8-byte alignment, ticket offset 48 and trivial copyability. #30 must
+verify the implemented layout under the pinned MSVC compiler and retain the trivial-copy and 64-byte assertions.
+
+Regression cases include a queued match received just below and exactly at 500 ms from issue, an unchanged
+unconfirmed sample that cannot renew age, and a seek from confirmed A to unconfirmed B that disables capture
+immediately. Cover A → B → A in one drain, forward/backward seek, a changed value between render and click,
+overflow with a plausible match in the same batch, post-overflow recovery only on the new ticket, and
+release/prepare or reopen with old tickets and no callbacks. In Cubase, compare the shown capture PPQ and the
+cursor during playback, stopped cursor moves and suspended callbacks. Record observed lag and capture availability.
 
 Proposed UI-facing capture result is
 `Captured{ppq, playing}` or one of `awaitingFreshSnapshot`, `stale`, `overflow`, `audioUnavailable`,
@@ -133,6 +209,14 @@ Use monotonic time for age only. Never extrapolate PPQ from time, tempo or sampl
   use the same explicit Apply/Cancel path. Stage one operation at a time. Protect dirty edits on selection changes
   or a new operation by offering Apply, Discard or Stay. Switching views preserves the draft. Closing the host-owned
   editor discards the in-memory draft; committed data survives editor reopen. Do not rely on intercepting host close.
+- **Finding 03.** Show a persistent, clearly visible “Unapplied changes” indicator whenever the draft is dirty,
+  including after a failed Apply. Keep it visible across view switches while a dirty draft exists. Label committed
+  cue data and draft fields distinctly, and keep committed list values separate from proposed deletions or moves.
+  Tell the user in the dirty-state area that closing the editor discards unapplied changes. Clear the indicator on
+  Apply completion (`applied` or `unchanged`) or Cancel. Host save and playback use committed state only.
+  Drafts are never persisted.
+  Test the indicator on edit, mode switch, failed Apply, Cancel and successful Apply. Reopen the editor and verify
+  that only committed values return.
 - Render ranges as `[start, end)` with labels “Start PPQ (included)” and “End PPQ (excluded)”. Show fractional
   quarter-note values without hidden quantization or bar conversion. Round-trip display/edit formatting without
   changing untouched doubles. Normalize CRLF and CR to LF before cue validation. Use plain Unicode UTF-8, preserve
@@ -182,9 +266,12 @@ review, installer and binary inspection, and fail-closed release approval bound 
 
 ## Decisions for project-owner approval
 
+- Approve the single-pending-slot ownership adjustment for #29. If the bounded ownership proof fails in
+  implementation review, explicitly choose whether to accept the baseline stopped-edit capacity and manual retry
+  or revisit the architecture. Increasing slot count only delays baseline exhaustion.
 - Adopt capture from fresh stopped observations with the same 500 ms bound as playing observations, subject to Cubase
   validation of cursor lag and callback suspension. Confirm the proposed ticket handshake and lifecycle verification.
-- Adopt explicit single-operation drafts for create, edit, delete and reorder. Confirm discard on host editor close,
-  manual retry on full slots and explicit reconciliation against a new revision after conflict.
+- Adopt explicit single-operation drafts for create, edit, delete and reorder, manual retry on temporarily full slots
+  and explicit reconciliation against a new revision after conflict. Discard on host editor close is retained.
 - If Cubase returns misleading PPQ while stopped or the lifecycle exclusion cannot be confirmed, record the evidence
   and obtain approval for the revised eligibility or synchronization contract before shipping.
